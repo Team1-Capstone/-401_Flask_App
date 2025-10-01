@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from decimal import Decimal
@@ -107,8 +107,33 @@ def index():
 def login():
     return render_template('login.html')
 
-@app.route('/register')
+@app.route('/register', methods=['GET', 'POST'])
 def register():
+    if request.method == 'POST':
+        full_name = request.form['full_name']
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return redirect(url_for('register'))
+
+        if not full_name or not username or not email or not password:
+            flash('Please fill in all fields', 'error')
+            return redirect(url_for('register'))
+        
+        try:
+            new_user = User(full_name=full_name, username=username, email=email, password=password)
+            db.session.add(new_user)
+            db.session.commit()
+            flash('User added successfully!', 'success')
+            return redirect(url_for('register'))
+        except Exception as e:
+            flash(f'Error adding user: {str(e)}', 'error')
+            return redirect(url_for('register'))
+        
     return render_template('register.html')
 
 @app.route('/dashboard')
@@ -134,6 +159,8 @@ def cash_management():
 @app.route('/admin/dashboard')
 def admin_dashboard():
     return render_template('admin_dashboard.html')
+
+app.secret_key = "your_super_secret_key_here"
 
 if __name__ == '__main__':
     app.run(debug=True)

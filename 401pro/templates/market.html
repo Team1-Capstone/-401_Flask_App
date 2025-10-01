@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Market{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Stock Market</h2>
+    <div>
+        <span class="badge bg-success me-2">Market Open</span>
+        <small class="text-muted">Last updated: 14:30:45</small>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Company</th>
+                        <th>Price</th>
+                        <th>Change</th>
+                        <th>Volume</th>
+                        <th>Market Cap</th>
+                        <th>Open</th>
+                        <th>High</th>
+                        <th>Low</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-bold">AAPL</td>
+                        <td>Apple Inc.</td>
+                        <td>$150.25</td>
+                        <td class="text-success">+$1.50 (1.01%)</td>
+                        <td>5.2M</td>
+                        <td>$2.46T</td>
+                        <td>$148.75</td>
+                        <td>$152.00</td>
+                        <td>$148.50</td>
+                        <td>
+                            <a href="{{ url_for('trade', ticker='AAPL') }}" class="btn btn-sm btn-primary">Trade</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">GOOGL</td>
+                        <td>Alphabet Inc.</td>
+                        <td>$2,750.05</td>
+                        <td class="text-danger">-$25.10 (-0.90%)</td>
+                        <td>1.5M</td>
+                        <td>$1.84T</td>
+                        <td>$2,775.30</td>
+                        <td>$2,780.00</td>
+                        <td>$2,745.50</td>
+                        <td>
+                            <a href="{{ url_for('trade', ticker='GOOGL') }}" class="btn btn-sm btn-primary">Trade</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">MSFT</td>
+                        <td>Microsoft Corporation</td>
+                        <td>$405.33</td>
+                        <td class="text-success">+$3.25 (0.81%)</td>
+                        <td>3.5M</td>
+                        <td>$3.02T</td>
+                        <td>$402.08</td>
+                        <td>$407.50</td>
+                        <td>$401.25</td>
+                        <td>
+                            <a href="{{ url_for('trade', ticker='MSFT') }}" class="btn btn-sm btn-primary">Trade</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto text-center">
+        <div class="jumbotron bg-light p-5 rounded-lg mt-5">
+            <h1 class="display-4">Stock Trading System</h1>
+            <p class="lead">Trade stocks with ease and manage your portfolio all in one place.</p>
+            <hr class="my-4">
+            <p>Start your trading journey today with our intuitive platform.</p>
+            <div class="mt-4">
+                <a class="btn btn-primary btn-lg me-3" href="{{ url_for('register') }}" role="button">Sign Up</a>
+                <a class="btn btn-outline-primary btn-lg" href="{{ url_for('login') }}" role="button">Login</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Real-time Trading</h5>
+                <p class="card-text">Buy and sell stocks at market prices with real-time updates.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-wallet fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Portfolio Management</h5>
+                <p class="card-text">Track your investments and monitor your portfolio performance.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-history fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Transaction History</h5>
+                <p class="card-text">View your complete trading history and track your progress.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

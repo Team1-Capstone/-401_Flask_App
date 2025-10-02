@@ -210,12 +210,86 @@ def dashboard():
 def market():
     return render_template('market.html')
 
-
-@app.route('/trade/<ticker>')
+@app.route('/trade/<ticker>', methods=['GET', 'POST'])
 @login_required
 def trade(ticker):
-    return render_template('trade.html', ticker=ticker)
+    
+    stock = Stock.query.filter_by(ticker=ticker).first()
+    if not stock:
+        flash('Stock not found', 'error')
+        return redirect(url_for('market'))
 
+    user = current_user
+
+    portfolio_item = Portfolio.query.filter_by(user_id=user.id, stock_id=stock.stock_id).first()
+    user_shares = portfolio_item.shares_owned if portfolio_item else 0
+
+    if request.method == 'POST':
+        action = request.form['action']
+        shares = int(request.form['shares'])
+
+        if shares <= 0:
+            flash('Enter a valid number of shares', 'error')
+            return redirect(url_for('trade', ticker=ticker))
+
+        if action == 'buy':
+            total_cost = shares * stock.current_price
+            if user.cash_balance < total_cost:
+                flash('Insufficient funds', 'error')
+            else:
+                new_transaction = Transaction(
+                    user_id=user.id,
+                    stock_id=stock.stock_id,
+                    type='buy',
+                    quantity=shares,
+                    price=stock.current_price
+                )
+
+                user.cash_balance -= total_cost
+
+                if portfolio_item:
+                    portfolio_item.shares_owned += shares
+                else:
+                    portfolio_item = Portfolio(
+                        user_id=user.id,
+                        stock_id=stock.stock_id,
+                        shares_owned=shares
+                    )
+                    db.session.add(portfolio_item)
+
+                db.session.add(new_transaction)
+                db.session.commit()
+
+                flash(f'Successfully bought {shares} shares of {stock.ticker}', 'success')
+                return redirect(url_for('dashboard'))
+
+        elif action == 'sell':
+            if not portfolio_item or portfolio_item.shares_owned < shares:
+                flash('Not enough shares to sell', 'error')
+            else:
+                total_value = shares * stock.current_price
+
+                new_transaction = Transaction(
+                    user_id=user.user_id,
+                    stock_id=stock.stock_id,
+                    type='sell',
+                    quantity=shares,
+                    price=stock.current_price
+                )
+
+                user.cash_balance += total_value
+
+                portfolio_item.shares_owned -= shares
+                if portfolio_item.shares_owned == 0:
+                    db.session.delete(portfolio_item)
+
+                db.session.add(new_transaction)
+                db.session.commit()
+
+                flash(f'Successfully sold {shares} shares of {stock.ticker}', 'success')
+                return redirect(url_for('dashboard'))
+
+    return render_template('trade.html', stock=stock, user=user, user_shares=user_shares)
 
 @app.route('/transaction_history')
 @login_required

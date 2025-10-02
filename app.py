@@ -172,7 +172,8 @@ def register():
             return redirect(url_for('register'))
 
         try:
-            passwd_hash = bcrypt.generate_password_hash(password)
+            passwd_hash = bcrypt.generate_password_hash(
+                password).decode('utf-8')
 
             new_user = User(full_name=full_name, username=username,
                             email=email, password=passwd_hash)

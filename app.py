@@ -3,26 +3,26 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from decimal import Decimal
 from flask_bcrypt import Bcrypt
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from functools import wraps
 
 
 app = Flask(__name__)
-bcrypt = Bcrypt(app)
 
-
-# Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:password@localhost/stock_trading_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.secret_key = "650a5cb8a4e921d0f8a4bb24d0bc30cc53304f3ccf1d8486e90e0b52218d4ee4b0c6c277c3e47834964cc7b04cf150685e86fff261c8db0285a367d209b75f63"
 
-# Initialize database
 db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
 
-# Define User model
 
-
-class User(db.Model):
+class User(UserMixin, db.Model):
     __tablename__ = 'user'
 
-    user_id = db.Column(db.BigInteger, primary_key=True)
+    id = db.Column(db.BigInteger, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
@@ -39,8 +39,6 @@ class User(db.Model):
             db.session.commit()
             return True
         return False
-
-# Define Stock model
 
 
 class Stock(db.Model):
@@ -68,15 +66,13 @@ class Stock(db.Model):
             return True
         return False
 
-# Define Portfolio model
-
 
 class Portfolio(db.Model):
     __tablename__ = 'portfolio'
 
     portfolio_id = db.Column(db.BigInteger, primary_key=True)
     user_id = db.Column(db.BigInteger, db.ForeignKey(
-        'user.user_id'), nullable=False)
+        'user.id'), nullable=False)
     stock_id = db.Column(db.BigInteger, db.ForeignKey(
         'stock.stock_id'), nullable=False)
     shares_owned = db.Column(db.BigInteger, nullable=False, default=0)
@@ -84,15 +80,13 @@ class Portfolio(db.Model):
     __table_args__ = (db.UniqueConstraint(
         'user_id', 'stock_id', name='unique_user_stock'),)
 
-# Define Transaction model
-
 
 class Transaction(db.Model):
     __tablename__ = 'transaction'
 
     transaction_id = db.Column(db.BigInteger, primary_key=True)
     user_id = db.Column(db.BigInteger, db.ForeignKey(
-        'user.user_id'), nullable=False)
+        'user.id'), nullable=False)
     stock_id = db.Column(db.BigInteger, db.ForeignKey(
         'stock.stock_id'), nullable=False)
     type = db.Column(db.Enum('buy', 'sell'), nullable=False)
@@ -101,15 +95,13 @@ class Transaction(db.Model):
     transaction_date = db.Column(
         db.DateTime, nullable=False, default=datetime.utcnow)
 
-# Define Order model
-
 
 class Order(db.Model):
     __tablename__ = 'order'
 
     order_id = db.Column(db.BigInteger, primary_key=True)
     user_id = db.Column(db.BigInteger, db.ForeignKey(
-        'user.user_id'), nullable=False)
+        'user.id'), nullable=False)
     stock_id = db.Column(db.BigInteger, db.ForeignKey(
         'stock.stock_id'), nullable=False)
     type = db.Column(db.Enum('buy', 'sell'), nullable=False)
@@ -122,11 +114,22 @@ class Order(db.Model):
                            default=datetime.utcnow)
 
 
-# Create tables
 with app.app_context():
     db.create_all()
 
-# Basic routes for each page
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != "admin":
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
 @app.route('/')
@@ -143,10 +146,11 @@ def login():
         user = User.query.filter_by(username=username).first()
 
         if user and bcrypt.check_password_hash(user.password, password):
-            session['user_id'] = user.user_id
+            session['user_id'] = user.id
             session['username'] = user.username
             session['role'] = user.role
             flash('Logged in successfully!', 'success')
+            login_user(user)
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid username or password', 'error')
@@ -188,37 +192,49 @@ def register():
     return render_template('register.html')
 
 
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
+
+
 @app.route('/dashboard')
+@login_required
 def dashboard():
     return render_template('dashboard.html')
 
 
 @app.route('/market')
+@login_required
 def market():
     return render_template('market.html')
 
 
 @app.route('/trade/<ticker>')
+@login_required
 def trade(ticker):
     return render_template('trade.html', ticker=ticker)
 
 
 @app.route('/transaction_history')
+@login_required
 def transaction_history():
     return render_template('transaction_history.html')
 
 
 @app.route('/cash_management')
+@login_required
 def cash_management():
     return render_template('cash_management.html')
 
 
 @app.route('/admin/dashboard')
+@admin_required
+@login_required
 def admin_dashboard():
     return render_template('admin_dashboard.html')
 
-
-app.secret_key = "your_super_secret_key_here"
 
 if __name__ == '__main__':
     app.run(debug=True)

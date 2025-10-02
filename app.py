@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from decimal import Decimal
@@ -103,8 +103,23 @@ with app.app_context():
 def index():
     return render_template('index.html')
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.password == password:
+            session['user_id'] = user.user_id
+            session['username'] = user.username
+            session['role'] = user.role
+            flash('Logged in successfully!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid username or password', 'error')
+            return redirect(url_for('login'))
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])

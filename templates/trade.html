@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Trade {{ stock.ticker }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Trade {{ stock.ticker }}</h4>
+            </div>
+            <div class="card-body">
+                <p><strong>Company:</strong> {{ stock.name }}</p>
+                <p><strong>Current Price:</strong> ${{ "%.2f"|format(stock.current_price) }}</p>
+                <p><strong>Your Cash Balance:</strong> ${{ "%.2f"|format(user.cash_balance) }}</p>
+                <p><strong>Your Shares:</strong> {{ user_shares }}</p>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="shares" class="form-label">Number of Shares</label>
+                        <input type="number" class="form-control" id="shares" name="shares" min="1" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="action" value="buy" class="btn btn-success">Buy</button>
+                        <button type="submit" name="action" value="sell" class="btn btn-danger">Sell</button>
+                    </div>
+                </form>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

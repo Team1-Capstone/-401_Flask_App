@@ -270,7 +270,7 @@ def trade(ticker):
                 total_value = shares * stock.current_price
 
                 new_transaction = Transaction(
-                    user_id=user.user_id,
+                    user_id=user.id,
                     stock_id=stock.stock_id,
                     type='sell',
                     quantity=shares,

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Cash Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2>Cash Management</h2>
+        <p class="text-muted">Manage your account balance</p>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Current Balance Card -->
+<div class="row mb-4">
+    <div class="col-md-4 mx-auto">
+        <div class="card bg-primary text-white text-center">
+            <div class="card-body">
+                <h6 class="card-title">Current Cash Balance</h6>
+                <h2 class="mb-0">${{ "%.2f"|format(current_user.cash_balance) }}</h2>
+                <small>Available for trading</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deposit and Withdraw Forms -->
+<div class="row">
+    <!-- Deposit Form -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Deposit Funds</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('deposit') }}">
+                    <div class="mb-3">
+                        <label for="deposit_amount" class="form-label">Amount to Deposit</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="deposit_amount" name="amount" 
+                                   step="0.01" min="0.01" placeholder="0.00" required>
+                        </div>
+                        <small class="text-muted">Minimum deposit: $0.01</small>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check me-2"></i>Deposit Funds
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdraw Form -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-minus-circle me-2"></i>Withdraw Funds</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('withdraw') }}">
+                    <div class="mb-3">
+                        <label for="withdraw_amount" class="form-label">Amount to Withdraw</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="withdraw_amount" name="amount" 
+                                   step="0.01" min="0.01" max="{{ current_user.cash_balance }}" 
+                                   placeholder="0.00" required>
+                        </div>
+                        <small class="text-muted">Maximum: ${{ "%.2f"|format(current_user.cash_balance) }}</small>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-arrow-right me-2"></i>Withdraw Funds
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

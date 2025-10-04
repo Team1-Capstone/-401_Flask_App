@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction History{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2>Transaction History</h2>
+        <p class="text-muted">View all your trading activity</p>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">All Transactions</h5>
+                <span class="badge bg-info">{{ transactions|length if transactions else 0 }} Total</span>
+            </div>
+            <div class="card-body">
+                {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date & Time</th>
+                                <th>Type</th>
+                                <th>Ticker</th>
+                                <th>Company</th>
+                                <th>Quantity</th>
+                                <th>Price per Share</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trans in transactions %}
+                            <tr>
+                                <td><small class="text-muted">#{{ trans.transaction.transaction_id }}</small></td>
+                                <td>{{ trans.transaction.transaction_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>
+                                    <span class="badge {% if trans.transaction.type == 'buy' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if trans.transaction.type == 'buy' %}
+                                            <i class="fas fa-arrow-down me-1"></i>BUY
+                                        {% else %}
+                                            <i class="fas fa-arrow-up me-1"></i>SELL
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td class="fw-bold">{{ trans.stock.ticker }}</td>
+                                <td>{{ trans.stock.company_name }}</td>
+                                <td>{{ trans.transaction.quantity }}</td>
+                                <td>${{ "%.2f"|format(trans.transaction.price) }}</td>
+                                <td class="fw-bold {% if trans.transaction.type == 'buy' %}text-danger{% else %}text-success{% endif %}">
+                                    {% if trans.transaction.type == 'buy' %}-{% else %}+{% endif %}${{ "%.2f"|format(trans.transaction.quantity * trans.transaction.price) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No transactions found.</p>
+                    <a href="{{ url_for('market') }}" class="btn btn-primary">Start Trading</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

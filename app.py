@@ -198,12 +198,12 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-
+'''
 @app.route('/dashboard')
 @login_required
 def dashboard():
     return render_template('dashboard.html')
-
+'''
 
 @app.route('/market')
 @login_required
@@ -290,24 +290,137 @@ def trade(ticker):
                 return redirect(url_for('dashboard'))
 
     return render_template('trade.html', stock=stock, user=user, user_shares=user_shares)
+'''
+#OLD ROUTES TO LOOK AT FOR DEFAULT
+
 
 @app.route('/transaction_history')
 @login_required
 def transaction_history():
     return render_template('transaction_history.html')
-
-
+'''
+'''
 @app.route('/cash_management')
 @login_required
 def cash_management():
     return render_template('cash_management.html')
-
+'''
 
 @app.route('/admin/dashboard')
 @admin_required
 @login_required
 def admin_dashboard():
     return render_template('admin_dashboard.html')
+
+
+#====================================================================
+# new ROUTES DELETE COMMENT WHEN REDENDENCY IS NO LONGER NEEDED =========================================================
+# ===================================================================
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    # Get portfolio items with stock info
+    portfolio_items = db.session.query(Portfolio, Stock).join(
+        Stock, Portfolio.stock_id == Stock.stock_id
+    ).filter(
+        Portfolio.user_id == current_user.id,
+        Portfolio.shares_owned > 0
+    ).all()
+    
+    # Format for template
+    formatted_items = []
+    portfolio_value = 0
+    for portfolio, stock in portfolio_items:
+        formatted_items.append({
+            'portfolio': portfolio,
+            'stock': stock
+        })
+        portfolio_value += portfolio.shares_owned * stock.current_price
+    
+    # Get recent transactions (last 5)
+    recent_transactions = db.session.query(Transaction, Stock).join(
+        Stock, Transaction.stock_id == Stock.stock_id
+    ).filter(
+        Transaction.user_id == current_user.id
+    ).order_by(
+        Transaction.transaction_date.desc()
+    ).limit(5).all()
+    
+    formatted_transactions = []
+    for transaction, stock in recent_transactions:
+        formatted_transactions.append({
+            'transaction': transaction,
+            'stock': stock
+        })
+    
+    return render_template('dashboard.html',
+                         portfolio_items=formatted_items,
+                         portfolio_value=portfolio_value,
+                         recent_transactions=formatted_transactions)
+
+@app.route('/transaction_history')
+@login_required
+def transaction_history():
+    # Get all transactions for current user
+    transactions = db.session.query(Transaction, Stock).join(
+        Stock, Transaction.stock_id == Stock.stock_id
+    ).filter(
+        Transaction.user_id == current_user.id
+    ).order_by(
+        Transaction.transaction_date.desc()
+    ).all()
+    
+    formatted_transactions = []
+    for transaction, stock in transactions:
+        formatted_transactions.append({
+            'transaction': transaction,
+            'stock': stock
+        })
+    
+    return render_template('history.html', transactions=formatted_transactions)
+
+@app.route('/cash_management')
+@login_required
+def cash_management():
+    return render_template('management.html')
+
+@app.route('/deposit', methods=['POST'])
+@login_required
+def deposit():
+    try:
+        amount = float(request.form['amount'])
+        if amount <= 0:
+            flash('Please enter a valid amount', 'error')
+        else:
+            current_user.cash_balance += Decimal(str(amount))
+            db.session.commit()
+            flash(f'Successfully deposited ${amount:.2f}', 'success')
+    except Exception as e:
+        flash(f'Error processing deposit: {str(e)}', 'error')
+    
+    return redirect(url_for('cash_management'))
+
+@app.route('/withdraw', methods=['POST'])
+@login_required
+def withdraw():
+    try:
+        amount = float(request.form['amount'])
+        if amount <= 0:
+            flash('Please enter a valid amount', 'error')
+        elif amount > current_user.cash_balance:
+            flash('Insufficient funds', 'error')
+        else:
+            current_user.cash_balance -= Decimal(str(amount))
+            db.session.commit()
+            flash(f'Successfully withdrew ${amount:.2f}', 'success')
+    except Exception as e:
+        flash(f'Error processing withdrawal: {str(e)}', 'error')
+    
+    return redirect(url_for('cash_management'))
+
+
+#END OF NEW SHLOP ===========================
 
 
 if __name__ == '__main__':

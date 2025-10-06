@@ -307,10 +307,12 @@ def cash_management():
 '''
 
 @app.route('/admin/dashboard')
-@admin_required
 @login_required
+@admin_required
 def admin_dashboard():
-    return render_template('admin_dashboard.html')
+    users = User.query.all()
+    orders = Order.query.all()
+    return render_template('admin_dashboard.html', users=users, orders=orders)
 
 
 #====================================================================

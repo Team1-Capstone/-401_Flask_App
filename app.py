@@ -306,13 +306,68 @@ def cash_management():
     return render_template('cash_management.html')
 '''
 
-@app.route('/admin/dashboard')
-@login_required
+@app.route('/admin/dashboard', methods=['GET', 'POST'])
 @admin_required
+@login_required
 def admin_dashboard():
-    users = User.query.all()
-    orders = Order.query.all()
-    return render_template('admin_dashboard.html', users=users, orders=orders)
+    if request.method == 'POST':
+        if 'add_stock' in request.form:
+            ticker = request.form['ticker'].upper()
+            company_name = request.form['company_name']
+            try:
+                current_price = Decimal(request.form['current_price'])
+                day_high = Decimal(request.form['day_high'])
+                day_low = Decimal(request.form['day_low'])
+                volume = int(request.form['volume'])
+            except:
+                flash('Invalid input values', 'error')
+                return redirect(url_for('admin_dashboard'))
+
+            if Stock.query.filter_by(ticker=ticker).first():
+                flash('Stock with this ticker already exists', 'error')
+            else:
+                new_stock = Stock(
+                    ticker=ticker,
+                    company_name=company_name,
+                    current_price=current_price,
+                    day_high=day_high,
+                    day_low=day_low,
+                    opening_price=current_price,
+                    volume=volume
+                )
+                db.session.add(new_stock)
+                db.session.commit()
+                flash(f'Stock {ticker} added successfully', 'success')
+
+        elif 'edit_stock_id' in request.form:
+            stock_id = int(request.form['edit_stock_id'])
+            stock = Stock.query.get(stock_id)
+            if stock:
+                try:
+                    stock.current_price = Decimal(request.form['current_price'])
+                    stock.day_high = Decimal(request.form['day_high'])
+                    stock.day_low = Decimal(request.form['day_low'])
+                    stock.volume = int(request.form['volume'])
+                    db.session.commit()
+                    flash(f'Stock {stock.ticker} updated successfully', 'success')
+                except:
+                    flash('Invalid input values for stock update', 'error')
+            else:
+                flash('Stock not found', 'error')
+
+        elif 'delete_stock_id' in request.form:
+            stock_id = int(request.form['delete_stock_id'])
+            stock = Stock.query.get(stock_id)
+            if stock:
+                db.session.delete(stock)
+                db.session.commit()
+                flash(f'Stock {stock.ticker} deleted successfully', 'success')
+            else:
+                flash('Stock not found', 'error')
+
+        return redirect(url_for('admin_dashboard'))
+    stocks = Stock.query.all()
+    return render_template('admin_dashboard.html', stocks=stocks)
 
 
 #====================================================================

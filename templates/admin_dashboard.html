@@ -1,185 +1,97 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Dashboard{% endblock %}
-
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h2>Portfolio Admin Dashboard</h2>
-        <p class="text-muted">Welcome back, {{ current_user.full_name }}!</p>
-    </div>
-</div>
-
-<!-- Flash Messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
+<div class="container mt-4">
+    <h2>Admin Dashboard</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
     {% endif %}
-{% endwith %}
-
-<!-- Account Summary Cards -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <h6 class="card-title">Cash Balance</h6>
-                <h3 class="mb-0">${{ "%.2f"|format(current_user.cash_balance) }}</h3>
-                <small>Available to trade</small>
-            </div>
+    {% endwith %}
+    <div class="card mb-4">
+        <div class="card-header">
+            Add New Stock
         </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <h6 class="card-title">Portfolio Value</h6>
-                <h3 class="mb-0">${{ "%.2f"|format(portfolio_value|default(0)) }}</h3>
-                <small>Total holdings</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <h6 class="card-title">Total Account Value</h6>
-                <h3 class="mb-0">${{ "%.2f"|format(current_user.cash_balance + portfolio_value|default(0)) }}</h3>
-                <small>Cash + Holdings</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <h6 class="card-title">Positions</h6>
-                <h3 class="mb-0">{{ portfolio_items|length if portfolio_items else 0 }}</h3>
-                <small>Stocks owned</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Quick Actions</h5>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="{{ url_for('cash_management') }}" class="btn btn-primary">
-                        <i class="fas fa-wallet me-2"></i>Manage Cash
-                    </a>
-                    <a href="{{ url_for('market') }}" class="btn btn-success">
-                        <i class="fas fa-shopping-cart me-2"></i>Buy Stocks
-                    </a>
-                    <a href="{{ url_for('transaction_history') }}" class="btn btn-info">
-                        <i class="fas fa-history me-2"></i>View History
-                    </a>
+        <div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="add_stock" value="1">
+                <div class="mb-3">
+                    <label class="form-label">Ticker</label>
+                    <input type="text" name="ticker" class="form-control" required>
                 </div>
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Company Name</label>
+                    <input type="text" name="company_name" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Current Price</label>
+                    <input type="number" step="0.01" name="current_price" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Day High</label>
+                    <input type="number" step="0.01" name="day_high" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Day Low</label>
+                    <input type="number" step="0.01" name="day_low" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-success">Add Stock</button>
+            </form>
         </div>
     </div>
-</div>
-
-<!-- Current Holdings -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Current Holdings</h5>
-                <span class="badge bg-secondary">{{ portfolio_items|length if portfolio_items else 0 }} Positions</span>
-            </div>
-            <div class="card-body">
-                {% if portfolio_items %}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Ticker</th>
-                                <th>Company</th>
-                                <th>Shares</th>
-                                <th>Current Price</th>
-                                <th>Market Value</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in portfolio_items %}
-                            <tr>
-                                <td class="fw-bold">{{ item.stock.ticker }}</td>
-                                <td>{{ item.stock.company_name }}</td>
-                                <td>{{ item.portfolio.shares_owned }}</td>
-                                <td>${{ "%.2f"|format(item.stock.current_price) }}</td>
-                                <td class="fw-bold text-success">${{ "%.2f"|format(item.portfolio.shares_owned * item.stock.current_price) }}</td>
-                                <td>
-                                    <a href="{{ url_for('trade', ticker=item.stock.ticker) }}" class="btn btn-sm btn-primary">Trade</a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">You don't have any holdings yet.</p>
-                    <a href="{{ url_for('market') }}" class="btn btn-primary">Start Trading</a>
-                </div>
-                {% endif %}
-            </div>
+    <div class="card">
+        <div class="card-header">
+            Stocks
         </div>
-    </div>
-</div>
-
-<!-- Recent Transactions -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Recent Transactions</h5>
-                <a href="{{ url_for('transaction_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
-            </div>
-            <div class="card-body">
-                {% if recent_transactions %}
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Ticker</th>
-                                <th>Quantity</th>
-                                <th>Price</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for trans in recent_transactions %}
-                            <tr>
-                                <td>{{ trans.transaction.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>
-                                    <span class="badge {% if trans.transaction.type == 'buy' %}bg-success{% else %}bg-danger{% endif %}">
-                                        {{ trans.transaction.type.upper() }}
-                                    </span>
-                                </td>
-                                <td class="fw-bold">{{ trans.stock.ticker }}</td>
-                                <td>{{ trans.transaction.quantity }}</td>
-                                <td>${{ "%.2f"|format(trans.transaction.price) }}</td>
-                                <td>${{ "%.2f"|format(trans.transaction.quantity * trans.transaction.price) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-4">
-                    <p class="text-muted">No recent transactions.</p>
-                </div>
-                {% endif %}
-            </div>
+        <div class="card-body table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Company Name</th>
+                        <th>Current Price</th>
+                        <th>Day High</th>
+                        <th>Day Low</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stocks %}
+                    <tr>
+                        <td>{{ stock.ticker }}</td>
+                        <td>{{ stock.company_name }}</td>
+                        <td>
+                            <form method="POST" class="d-flex">
+                                <input type="hidden" name="edit_stock_id" value="{{ stock.stock_id }}">
+                                <input type="number" step="0.01" name="current_price" value="{{ stock.current_price }}"
+                                    class="form-control me-2" style="width:100px;">
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" name="day_high" value="{{ stock.day_high }}"
+                                class="form-control me-2" style="width:100px;">
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" name="day_low" value="{{ stock.day_low }}"
+                                class="form-control me-2" style="width:100px;">
+                        </td>
+                        <td>
+                            <button type="submit" class="btn btn-primary btn-sm me-2">Update</button>
+                            </form>
+                            <form method="POST" style="display:inline;">
+                                <input type="hidden" name="delete_stock_id" value="{{ stock.stock_id }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

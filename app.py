@@ -198,17 +198,11 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-'''
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    return render_template('dashboard.html')
-'''
 
 @app.route('/market')
-@login_required
 def market():
-    return render_template('market.html')
+    stocks = Stock.query.all()
+    return render_template('market.html', stocks=stocks)
 
 @app.route('/trade/<ticker>', methods=['GET', 'POST'])
 @login_required
@@ -370,8 +364,8 @@ def admin_dashboard():
     return render_template('admin_dashboard.html', stocks=stocks)
 
 
-#====================================================================
-# new ROUTES DELETE COMMENT WHEN REDENDENCY IS NO LONGER NEEDED =========================================================
+#====================================================================n
+# new ROUTES DELETE COMMENT WHEN REDENDENCY IS NO LONGER NEEDED =====
 # ===================================================================
 
 @app.route('/dashboard')
@@ -475,9 +469,6 @@ def withdraw():
         flash(f'Error processing withdrawal: {str(e)}', 'error')
     
     return redirect(url_for('cash_management'))
-
-
-#END OF NEW SHLOP ===========================
 
 
 if __name__ == '__main__':

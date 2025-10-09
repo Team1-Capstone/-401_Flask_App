@@ -6,6 +6,7 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from functools import wraps
 import re
+from flask import abort
 
 
 app = Flask(__name__)
@@ -126,7 +127,7 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != "admin":
-            return redirect(url_for("login"))
+            abort(401)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -509,6 +510,16 @@ def withdraw():
         flash(f'Error processing withdrawal: {str(e)}', 'error')
 
     return redirect(url_for('cash_management'))
+
+
+@app.errorhandler(401)
+def unauthorized_error(error):
+    return render_template("401.html"), 401
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template("404.html"), 404
 
 
 if __name__ == '__main__':

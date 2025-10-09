@@ -5,11 +5,11 @@
 {% block content %}
 <div class="row">
     <div class="col-md-8 mx-auto text-center">
-        <div class="jumbotron bg-light p-5 rounded-lg mt-5">
-            <h1 class="display-4">MangoMarket</h1>
+        <div class="jumbotron bg-light p-5 rounded-lg mt-5 shadow-sm">
+            <h1 class="display-4 fw-bold">MangoMarket</h1>
             <p class="lead">Trade stocks with ease and manage your portfolio all in one place.</p>
             <hr class="my-4">
-            <p>Start your trading journey today with our intuitive platform.</p>
+            <p>Start your trading journey today with our intuitive platform designed for both beginners and experts.</p>
 
             {% if not current_user.is_authenticated %}
             <div class="mt-4">
@@ -25,33 +25,95 @@
     </div>
 </div>
 
-<div class="row mt-5">
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
-                <h5 class="card-title">Real-time Trading</h5>
-                <p class="card-text">Buy and sell stocks at market prices with real-time updates.</p>
+<div class="container mt-5">
+    <div class="row text-center mb-4">
+        <h2 class="fw-bold">Our Core Features</h2>
+        <p class="text-muted">Everything you need to trade smart and manage your portfolio efficiently.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Real-time Trading</h5>
+                    <p class="card-text">Buy and sell stocks instantly with live market data and no hidden fees.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-wallet fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Portfolio Management</h5>
+                    <p class="card-text">Track, analyze, and rebalance your portfolio all from one simple dashboard.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-history fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Transaction History</h5>
+                    <p class="card-text">Stay informed with complete access to your trading activity and performance
+                        data.</p>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-wallet fa-3x text-primary mb-3"></i>
-                <h5 class="card-title">Portfolio Management</h5>
-                <p class="card-text">Track your investments and monitor your portfolio performance.</p>
+</div>
+
+<div class="container mt-5 py-5 bg-light rounded-4 shadow-sm">
+    <div class="row align-items-center">
+        <div class="col-md-6 mb-4 mb-md-0">
+            <div class="p-4 text-center bg-white rounded-4 shadow-sm h-100 d-flex flex-column justify-content-center">
+                <h4 class="fw-bold mb-3">Our Promise</h4>
+                <p class="text-muted">Empowering every trader through innovation, security, and simplicity.</p>
+                <div class="row mt-3">
+                    <div class="col-6 mb-3">
+                        <i class="fas fa-lock fa-2x text-primary mb-2"></i>
+                        <h6 class="fw-semibold">Bank-Grade Security</h6>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <i class="fas fa-chart-pie fa-2x text-primary mb-2"></i>
+                        <h6 class="fw-semibold">Smart Insights</h6>
+                    </div>
+                    <div class="col-6">
+                        <i class="fas fa-headset fa-2x text-primary mb-2"></i>
+                        <h6 class="fw-semibold">24/7 Support</h6>
+                    </div>
+                    <div class="col-6">
+                        <i class="fas fa-globe fa-2x text-primary mb-2"></i>
+                        <h6 class="fw-semibold">Global Access</h6>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-history fa-3x text-primary mb-3"></i>
-                <h5 class="card-title">Transaction History</h5>
-                <p class="card-text">View your complete trading history and track your progress.</p>
-            </div>
+
+        <div class="col-md-6">
+            <h3 class="fw-bold mb-3">Why Choose MangoMarket?</h3>
+            <p>We combine powerful analytics, real-time insights, and a user-friendly interface to make trading more
+                accessible than ever. Whether you’re a seasoned investor or just starting out, MangoMarket offers the
+                tools you need to make informed decisions.</p>
+            <ul class="list-unstyled mt-3">
+                <li><i class="fas fa-check text-success me-2"></i> Secure and encrypted user data</li>
+                <li><i class="fas fa-check text-success me-2"></i> Commission-free trading</li>
+                <li><i class="fas fa-check text-success me-2"></i> 24/7 market data and updates</li>
+                <li><i class="fas fa-check text-success me-2"></i> Friendly support team</li>
+            </ul>
         </div>
     </div>
+</div>
+
+
+<div class="container-fluid bg-primary text-white text-center py-5 mt-5 rounded-0">
+    <h2 class="fw-bold">Ready to Start Trading?</h2>
+    <p class="mb-4">Join thousands of users already building wealth with MangoMarket.</p>
+    {% if not current_user.is_authenticated %}
+    <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">Create Account</a>
+    <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">Login</a>
+    {% else %}
+    <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg">Go to Dashboard</a>
+    {% endif %}
 </div>
 {% endblock %}

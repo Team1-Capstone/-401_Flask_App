@@ -5,6 +5,7 @@ from decimal import Decimal
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from functools import wraps
+import re
 
 
 app = Flask(__name__)
@@ -20,6 +21,7 @@ login_manager.init_app(app)
 
 MARKET_OPEN = time(7, 30)
 MARKET_CLOSE = time(14, 0)
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -172,6 +174,21 @@ def register():
         if password != confirm_password:
             flash('Passwords do not match', 'error')
             return redirect(url_for('register'))
+        elif len(password) < 8:
+            flash('Password must be at least 8 characters', 'error')
+            return redirect(url_for('register'))
+        elif re.search(r"\d", password) is None:
+            flash('Password must have at least 1 digit', 'error')
+            return redirect(url_for('register'))
+        elif re.search(r"[A-Z]", password) is None:
+            flash('Password must have at least 1 uppercase letter', 'error')
+            return redirect(url_for('register'))
+        elif re.search(r"[a-z]", password) is None:
+            flash('Password must have at least 1 lowercase letter', 'error')
+            return redirect(url_for('register'))
+        elif re.search(r"[ !#$%&'()*+,-./[\\\]^_`{|}~"+r'"]', password) is None:
+            flash('Password must have at least 1 symbol', 'error')
+            return redirect(url_for('register'))
 
         if not full_name or not username or not email or not password:
             flash('Please fill in all fields', 'error')
@@ -207,10 +224,11 @@ def market():
     current_time = datetime.now().strftime("%H:%M:%S")
     return render_template('market.html', stocks=stocks, current_time=current_time)
 
+
 @app.route('/trade/<ticker>', methods=['GET', 'POST'])
 @login_required
 def trade(ticker):
-    
+
     stock = Stock.query.filter_by(ticker=ticker).first()
     if not stock:
         flash('Stock not found', 'error')
@@ -218,7 +236,8 @@ def trade(ticker):
 
     user = current_user
 
-    portfolio_item = Portfolio.query.filter_by(user_id=user.id, stock_id=stock.stock_id).first()
+    portfolio_item = Portfolio.query.filter_by(
+        user_id=user.id, stock_id=stock.stock_id).first()
     user_shares = portfolio_item.shares_owned if portfolio_item else 0
 
     if request.method == 'POST':
@@ -228,7 +247,7 @@ def trade(ticker):
         if user.role != 'admin' and not market_open_now:
             flash('Trading is only allowed between 7:30am and 2:00pm.', 'error')
             return redirect(url_for('dashboard'))
-    
+
         action = request.form['action']
         shares = int(request.form['shares'])
 
@@ -264,7 +283,8 @@ def trade(ticker):
                 db.session.add(new_transaction)
                 db.session.commit()
 
-                flash(f'Successfully bought {shares} shares of {stock.ticker}', 'success')
+                flash(
+                    f'Successfully bought {shares} shares of {stock.ticker}', 'success')
                 return redirect(url_for('dashboard'))
 
         elif action == 'sell':
@@ -290,10 +310,13 @@ def trade(ticker):
                 db.session.add(new_transaction)
                 db.session.commit()
 
-                flash(f'Successfully sold {shares} shares of {stock.ticker}', 'success')
+                flash(
+                    f'Successfully sold {shares} shares of {stock.ticker}', 'success')
                 return redirect(url_for('dashboard'))
 
     return render_template('trade.html', stock=stock, user=user, user_shares=user_shares)
+
+
 '''
 #OLD ROUTES TO LOOK AT FOR DEFAULT
 
@@ -309,6 +332,7 @@ def transaction_history():
 def cash_management():
     return render_template('cash_management.html')
 '''
+
 
 @app.route('/admin/dashboard', methods=['GET', 'POST'])
 @admin_required
@@ -348,12 +372,14 @@ def admin_dashboard():
             stock = Stock.query.get(stock_id)
             if stock:
                 try:
-                    stock.current_price = Decimal(request.form['current_price'])
+                    stock.current_price = Decimal(
+                        request.form['current_price'])
                     stock.day_high = Decimal(request.form['day_high'])
                     stock.day_low = Decimal(request.form['day_low'])
                     stock.volume = int(request.form['volume'])
                     db.session.commit()
-                    flash(f'Stock {stock.ticker} updated successfully', 'success')
+                    flash(
+                        f'Stock {stock.ticker} updated successfully', 'success')
                 except:
                     flash('Invalid input values for stock update', 'error')
             else:
@@ -374,7 +400,7 @@ def admin_dashboard():
     return render_template('admin_dashboard.html', stocks=stocks)
 
 
-#====================================================================n
+# ====================================================================n
 # new ROUTES DELETE COMMENT WHEN REDENDENCY IS NO LONGER NEEDED =====
 # ===================================================================
 
@@ -388,7 +414,7 @@ def dashboard():
         Portfolio.user_id == current_user.id,
         Portfolio.shares_owned > 0
     ).all()
-    
+
     # Format for template
     formatted_items = []
     portfolio_value = 0
@@ -398,7 +424,7 @@ def dashboard():
             'stock': stock
         })
         portfolio_value += portfolio.shares_owned * stock.current_price
-    
+
     # Get recent transactions (last 5)
     recent_transactions = db.session.query(Transaction, Stock).join(
         Stock, Transaction.stock_id == Stock.stock_id
@@ -407,18 +433,19 @@ def dashboard():
     ).order_by(
         Transaction.transaction_date.desc()
     ).limit(5).all()
-    
+
     formatted_transactions = []
     for transaction, stock in recent_transactions:
         formatted_transactions.append({
             'transaction': transaction,
             'stock': stock
         })
-    
+
     return render_template('dashboard.html',
-                         portfolio_items=formatted_items,
-                         portfolio_value=portfolio_value,
-                         recent_transactions=formatted_transactions)
+                           portfolio_items=formatted_items,
+                           portfolio_value=portfolio_value,
+                           recent_transactions=formatted_transactions)
+
 
 @app.route('/transaction_history')
 @login_required
@@ -431,20 +458,22 @@ def transaction_history():
     ).order_by(
         Transaction.transaction_date.desc()
     ).all()
-    
+
     formatted_transactions = []
     for transaction, stock in transactions:
         formatted_transactions.append({
             'transaction': transaction,
             'stock': stock
         })
-    
+
     return render_template('history.html', transactions=formatted_transactions)
+
 
 @app.route('/cash_management')
 @login_required
 def cash_management():
     return render_template('management.html')
+
 
 @app.route('/deposit', methods=['POST'])
 @login_required
@@ -459,8 +488,9 @@ def deposit():
             flash(f'Successfully deposited ${amount:.2f}', 'success')
     except Exception as e:
         flash(f'Error processing deposit: {str(e)}', 'error')
-    
+
     return redirect(url_for('cash_management'))
+
 
 @app.route('/withdraw', methods=['POST'])
 @login_required
@@ -477,7 +507,7 @@ def withdraw():
             flash(f'Successfully withdrew ${amount:.2f}', 'success')
     except Exception as e:
         flash(f'Error processing withdrawal: {str(e)}', 'error')
-    
+
     return redirect(url_for('cash_management'))
 
 

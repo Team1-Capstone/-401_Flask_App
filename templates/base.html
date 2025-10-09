@@ -34,12 +34,14 @@
                     </li>
                 </ul>
                 <ul class="navbar-nav">
+                    {% if current_user.full_name %}
                     <li class="nav-item">
                         <span class="navbar-text me-3">Welcome, {{ current_user.full_name }}</span>
                     </li>
                     <li class="nav-item">
                         <a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">Logout</a>
                     </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, time
 from decimal import Decimal
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -18,6 +18,8 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+MARKET_OPEN = time(7, 30)
+MARKET_CLOSE = time(14, 0)
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -202,7 +204,8 @@ def logout():
 @app.route('/market')
 def market():
     stocks = Stock.query.all()
-    return render_template('market.html', stocks=stocks)
+    current_time = datetime.now().strftime("%H:%M:%S")
+    return render_template('market.html', stocks=stocks, current_time=current_time)
 
 @app.route('/trade/<ticker>', methods=['GET', 'POST'])
 @login_required
@@ -219,6 +222,13 @@ def trade(ticker):
     user_shares = portfolio_item.shares_owned if portfolio_item else 0
 
     if request.method == 'POST':
+        now = datetime.now().time()
+        market_open_now = MARKET_OPEN <= now <= MARKET_CLOSE
+
+        if user.role != 'admin' and not market_open_now:
+            flash('Trading is only allowed between 7:30am and 2:00pm.', 'error')
+            return redirect(url_for('dashboard'))
+    
         action = request.form['action']
         shares = int(request.form['shares'])
 

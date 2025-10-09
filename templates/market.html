@@ -6,8 +6,12 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Stock Market</h2>
     <div>
-        <span class="badge bg-success me-2">Market Open</span>
-        <small class="text-muted">Last updated: 14:30:45</small>
+        {% if market_open %}
+            <span class="badge bg-success me-2">Market Open</span>
+        {% else %}
+            <span class="badge bg-danger me-2">Market Closed</span>
+        {% endif %}
+            <small class="text-muted">Last updated: {{ current_time }}</small>
     </div>
 </div>
 
@@ -43,7 +47,10 @@
                         <td>${{ stock.day_low }}</td>
                         <td>
                             <a href="{{ url_for('trade', ticker=stock.ticker) }}"
-                                class="btn btn-sm btn-primary">Trade</a>
+                               class="btn btn-sm btn-primary"
+                               {% if not market_open and current_user.role != 'admin' %}disabled{% endif %}>
+                               Trade
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}

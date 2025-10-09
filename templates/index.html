@@ -6,14 +6,21 @@
 <div class="row">
     <div class="col-md-8 mx-auto text-center">
         <div class="jumbotron bg-light p-5 rounded-lg mt-5">
-            <h1 class="display-4">Stock Trading System</h1>
+            <h1 class="display-4">MangoMarket</h1>
             <p class="lead">Trade stocks with ease and manage your portfolio all in one place.</p>
             <hr class="my-4">
             <p>Start your trading journey today with our intuitive platform.</p>
+
+            {% if not current_user.is_authenticated %}
             <div class="mt-4">
                 <a class="btn btn-primary btn-lg me-3" href="{{ url_for('register') }}" role="button">Sign Up</a>
                 <a class="btn btn-outline-primary btn-lg" href="{{ url_for('login') }}" role="button">Login</a>
             </div>
+            {% else %}
+            <div class="mt-4">
+                <a class="btn btn-success btn-lg" href="{{ url_for('dashboard') }}" role="button">Go to Dashboard</a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

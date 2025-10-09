@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Trading System - {% block title %}{% endblock %}</title>
+    <title>MangoMarket - {% block title %}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -13,7 +13,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-chart-line me-2"></i>Stock Trading System
+                <i class="fas fa-chart-line me-2"></i>MangoMarket
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -34,7 +34,7 @@
                     </li>
                 </ul>
                 <ul class="navbar-nav">
-                    {% if current_user.full_name %}
+                    {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <span class="navbar-text me-3">Welcome, {{ current_user.full_name }}</span>
                     </li>
@@ -53,7 +53,7 @@
 
     <footer class="bg-light text-center py-3 mt-5">
         <div class="container">
-            <p class="mb-0">Stock Trading System &copy; 2025</p>
+            <p class="mb-0">MangoMarket &copy; 2025</p>
         </div>
     </footer>
 

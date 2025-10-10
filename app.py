@@ -7,6 +7,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from functools import wraps
 import re
 from flask import abort
+from markethours import MarketHours
 
 
 app = Flask(__name__)
@@ -19,9 +20,6 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-
-MARKET_OPEN = time(7, 30)
-MARKET_CLOSE = time(14, 0)
 
 
 class User(UserMixin, db.Model):
@@ -222,8 +220,13 @@ def logout():
 @app.route('/market')
 def market():
     stocks = Stock.query.all()
-    current_time = datetime.now().strftime("%H:%M:%S")
-    return render_template('market.html', stocks=stocks, current_time=current_time)
+    market_hours = {
+        'is_open': MarketHours().market_has_opened,
+        'opens_at': MarketHours().open.strftime('%A, %b %d at %I:%M %p EST'),
+        'closes_at': MarketHours().close.strftime('%A, %b %d at %I:%M %p EST')
+    }
+
+    return render_template('market.html', stocks=stocks, market_hours=market_hours)
 
 
 @app.route('/trade/<ticker>', methods=['GET', 'POST'])
@@ -242,11 +245,8 @@ def trade(ticker):
     user_shares = portfolio_item.shares_owned if portfolio_item else 0
 
     if request.method == 'POST':
-        now = datetime.now().time()
-        market_open_now = MARKET_OPEN <= now <= MARKET_CLOSE
-
-        if user.role != 'admin' and not market_open_now:
-            flash('Trading is only allowed between 7:30am and 2:00pm.', 'error')
+        if user.role != 'admin' and MarketHours.market_has_closed():
+            flash(f'Trading will reopen at {MarketHours().open}.', 'error')
             return redirect(url_for('dashboard'))
 
         action = request.form['action']

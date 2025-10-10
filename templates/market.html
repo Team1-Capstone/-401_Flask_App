@@ -6,12 +6,13 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Stock Market</h2>
     <div>
-        {% if market_open %}
-            <span class="badge bg-success me-2">Market Open</span>
+        {% if market_hours.is_open %}
+        <span class="badge bg-success me-2">Market Open</span>
+        <small class="text-muted">Open until <u>{{ market_hours.closes_at }}</u></small>
         {% else %}
-            <span class="badge bg-danger me-2">Market Closed</span>
+        <span class="badge bg-danger me-2">Market Closed</span>
+        <small class="text-muted">Closed until <u>{{ market_hours.opens_at }}</u></small>
         {% endif %}
-            <small class="text-muted">Last updated: {{ current_time }}</small>
     </div>
 </div>
 
@@ -30,7 +31,9 @@
                         <th>Open</th>
                         <th>High</th>
                         <th>Low</th>
+                        {% if current_user.is_authenticated %}
                         <th>Actions</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -46,11 +49,12 @@
                         <td>${{ stock.day_high }}</td>
                         <td>${{ stock.day_low }}</td>
                         <td>
-                            <a href="{{ url_for('trade', ticker=stock.ticker) }}"
-                               class="btn btn-sm btn-primary"
-                               {% if not market_open and current_user.role != 'admin' %}disabled{% endif %}>
-                               Trade
+                            {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('trade', ticker=stock.ticker) }}" class="btn btn-sm btn-primary" {% if
+                                not market_hours.is_open and current_user.role !='admin' %}disabled{% endif %}>
+                                Trade
                             </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

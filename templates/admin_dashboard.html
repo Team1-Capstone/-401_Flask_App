@@ -14,6 +14,89 @@
     {% endfor %}
     {% endif %}
     {% endwith %}
+
+    <!-- Market Control Card -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Market Control Panel</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Current Status</h6>
+                    {% if settings.manual_override %}
+                        <div class="alert alert-warning mb-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Manual Override Active</strong>
+                        </div>
+                        <p class="mb-2">
+                            <strong>Market Status:</strong> 
+                            <span class="badge {% if settings.is_open %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                                {% if settings.is_open %}OPEN{% else %}CLOSED{% endif %}
+                            </span>
+                        </p>
+                    {% else %}
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <strong>Using NYSE Calendar</strong>
+                        </div>
+                        <p class="mb-2">
+                            <strong>Market Status:</strong> 
+                            <span class="badge {% if market_info.is_open %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                                {% if market_info.is_open %}OPEN{% else %}CLOSED{% endif %}
+                            </span>
+                        </p>
+                        {% if market_info.is_open %}
+                            <p class="mb-0 text-muted"><small>Closes: {{ market_info.next_close }}</small></p>
+                        {% else %}
+                            <p class="mb-0 text-muted"><small>Opens: {{ market_info.next_open }}</small></p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Override Controls</h6>
+                    <form method="POST" class="d-grid gap-2">
+                        {% if not settings.manual_override %}
+                            <button type="submit" name="market_override" value="enable_override" 
+                                    class="btn btn-warning">
+                                <i class="fas fa-power-off me-2"></i>Enable Manual Override & Open Market
+                            </button>
+                        {% else %}
+                            <button type="submit" name="market_override" value="disable_override" 
+                                    class="btn btn-info">
+                                <i class="fas fa-calendar-check me-2"></i>Disable Override (Use NYSE Calendar)
+                            </button>
+                            
+                            {% if settings.is_open %}
+                                <button type="submit" name="market_override" value="close_market" 
+                                        class="btn btn-danger">
+                                    <i class="fas fa-times-circle me-2"></i>Close Market
+                                </button>
+                            {% else %}
+                                <button type="submit" name="market_override" value="open_market" 
+                                        class="btn btn-success">
+                                    <i class="fas fa-check-circle me-2"></i>Open Market
+                                </button>
+                            {% endif %}
+                        {% endif %}
+                    </form>
+                    
+                    <div class="mt-3 p-2 bg-light rounded">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            {% if settings.manual_override %}
+                                Manual override bypasses NYSE trading hours. All users can trade when market is manually opened.
+                            {% else %}
+                                Trading follows NYSE calendar. Market is open Monday-Friday, 9:30 AM - 4:00 PM ET, excluding holidays.
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card mb-4">
         <div class="card-header">
             Add New Stock

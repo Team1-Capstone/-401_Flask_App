@@ -121,8 +121,23 @@ class Order(db.Model):
                            default=datetime.utcnow)
 
 
+class MarketSettings(db.Model):
+    __tablename__ = 'market_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    manual_override = db.Column(db.Boolean, nullable=False, default=False)
+    is_open = db.Column(db.Boolean, nullable=False, default=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=True)
+
+
 with app.app_context():
     db.create_all()
+    # Initialize market settings if not exists
+    if not MarketSettings.query.first():
+        default_settings = MarketSettings(manual_override=False, is_open=False)
+        db.session.add(default_settings)
+        db.session.commit()
 
 
 def admin_required(f):
@@ -140,6 +155,19 @@ def load_user(user_id):
 
 
 def market_hours_info():
+    # Get market settings
+    settings = MarketSettings.query.first()
+    
+    # If manual override is enabled, return the override status
+    if settings and settings.manual_override:
+        return {
+            "is_open": settings.is_open,
+            "next_close": "Manual Override Active",
+            "next_open": "Manual Override Active",
+            "manual_override": True
+        }
+    
+    # Otherwise, use NYSE calendar
     nyse = mcal.get_calendar('NYSE')
     now = datetime.now(pytz.timezone('America/New_York'))
 
@@ -152,14 +180,20 @@ def market_hours_info():
 
     if not today_schedule.empty:
         next_close = today_schedule.iloc[0]['market_close']
-        return {"is_open": True, "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST'), "next_open": None}
+        return {
+            "is_open": True,
+            "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST'),
+            "next_open": None,
+            "manual_override": False
+        }
     else:
         next_open = upcoming.iloc[0]['market_open'] if not upcoming.empty else None
         next_close = upcoming.iloc[0]['market_close'] if not upcoming.empty else None
         return {
             "is_open": False,
             "next_open": next_open.strftime('%A, %b %d at %I:%M %p EST') if next_open else None,
-            "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST') if next_close else None
+            "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST') if next_close else None,
+            "manual_override": False
         }
 
 
@@ -266,13 +300,13 @@ def trade(ticker):
     portfolio_item = Portfolio.query.filter_by(
         user_id=user.id, stock_id=stock.stock_id).first()
     user_shares = portfolio_item.shares_owned if portfolio_item else 0
+    
+    market_info = market_hours_info()
 
     if request.method == 'POST':
-        if user.role != 'admin' and not market_hours_info()['is_open']:
-            open_time_string = datetime.strptime(
-                market_hours_info()['next_open'], '%A, %b %d at %I:%M %p EST')
+        if user.role != 'admin' and not market_info['is_open']:
             flash(
-                f'Trading will reopen at {open_time_string}.', 'error')
+                f'Trading is currently unavailable. Market will reopen at {market_info.get("next_open", "TBD")}.', 'error')
             return redirect(url_for('dashboard'))
 
         action = request.form['action']
@@ -341,24 +375,7 @@ def trade(ticker):
                     f'Successfully sold {shares} shares of {stock.ticker}', 'success')
                 return redirect(url_for('dashboard'))
 
-    return render_template('trade.html', stock=stock, user=user, user_shares=user_shares)
-
-
-'''
-#OLD ROUTES TO LOOK AT FOR DEFAULT
-
-
-@app.route('/transaction_history')
-@login_required
-def transaction_history():
-    return render_template('transaction_history.html')
-'''
-'''
-@app.route('/cash_management')
-@login_required
-def cash_management():
-    return render_template('cash_management.html')
-'''
+    return render_template('trade.html', stock=stock, user=user, user_shares=user_shares, market_open=market_info['is_open'])
 
 
 @app.route('/admin/dashboard', methods=['GET', 'POST'])
@@ -421,15 +438,41 @@ def admin_dashboard():
                 flash(f'Stock {stock.ticker} deleted successfully', 'success')
             else:
                 flash('Stock not found', 'error')
+        
+        elif 'market_override' in request.form:
+            settings = MarketSettings.query.first()
+            action = request.form['market_override']
+            
+            if action == 'enable_override':
+                settings.manual_override = True
+                settings.is_open = True
+                settings.updated_by = current_user.id
+                db.session.commit()
+                flash('Manual override enabled - Market is now OPEN', 'success')
+            elif action == 'disable_override':
+                settings.manual_override = False
+                settings.updated_by = current_user.id
+                db.session.commit()
+                flash('Manual override disabled - Using NYSE calendar', 'success')
+            elif action == 'open_market':
+                settings.is_open = True
+                settings.updated_by = current_user.id
+                db.session.commit()
+                flash('Market manually opened', 'success')
+            elif action == 'close_market':
+                settings.is_open = False
+                settings.updated_by = current_user.id
+                db.session.commit()
+                flash('Market manually closed', 'warning')
 
         return redirect(url_for('admin_dashboard'))
+    
     stocks = Stock.query.all()
-    return render_template('admin_dashboard.html', stocks=stocks)
+    market_info = market_hours_info()
+    settings = MarketSettings.query.first()
+    
+    return render_template('admin_dashboard.html', stocks=stocks, market_info=market_info, settings=settings)
 
-
-# ====================================================================n
-# new ROUTES DELETE COMMENT WHEN REDENDENCY IS NO LONGER NEEDED =====
-# ===================================================================
 
 @app.route('/dashboard')
 @login_required

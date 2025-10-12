@@ -1,20 +1,24 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, time
+from datetime import datetime, timedelta
 from decimal import Decimal
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from functools import wraps
 import re
+import os
+import pytz
 from flask import abort
-from markethours import MarketHours
+import pandas_market_calendars as mcal
+from dotenv import load_dotenv
 
+load_dotenv()
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:password@localhost/stock_trading_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = "650a5cb8a4e921d0f8a4bb24d0bc30cc53304f3ccf1d8486e90e0b52218d4ee4b0c6c277c3e47834964cc7b04cf150685e86fff261c8db0285a367d209b75f63"
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -135,6 +139,30 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+def market_hours_info():
+    nyse = mcal.get_calendar('NYSE')
+    now = datetime.now(pytz.timezone('America/New_York'))
+
+    schedule = nyse.schedule(tz='America/New_York', start_date=now.date() - timedelta(days=7),
+                             end_date=now.date() + timedelta(days=7))
+
+    today_schedule = schedule[(schedule['market_open'] <= now) & (
+        schedule['market_close'] >= now)]
+    upcoming = schedule[schedule['market_open'] > now]
+
+    if not today_schedule.empty:
+        next_close = today_schedule.iloc[0]['market_close']
+        return {"is_open": True, "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST'), "next_open": None}
+    else:
+        next_open = upcoming.iloc[0]['market_open'] if not upcoming.empty else None
+        next_close = upcoming.iloc[0]['market_close'] if not upcoming.empty else None
+        return {
+            "is_open": False,
+            "next_open": next_open.strftime('%A, %b %d at %I:%M %p EST') if next_open else None,
+            "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST') if next_close else None
+        }
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -220,13 +248,8 @@ def logout():
 @app.route('/market')
 def market():
     stocks = Stock.query.all()
-    market_hours = {
-        'is_open': MarketHours().market_has_opened,
-        'opens_at': MarketHours().open.strftime('%A, %b %d at %I:%M %p EST'),
-        'closes_at': MarketHours().close.strftime('%A, %b %d at %I:%M %p EST')
-    }
 
-    return render_template('market.html', stocks=stocks, market_hours=market_hours)
+    return render_template('market.html', stocks=stocks, market_hours=market_hours_info())
 
 
 @app.route('/trade/<ticker>', methods=['GET', 'POST'])
@@ -245,8 +268,9 @@ def trade(ticker):
     user_shares = portfolio_item.shares_owned if portfolio_item else 0
 
     if request.method == 'POST':
-        if user.role != 'admin' and MarketHours.market_has_closed():
-            flash(f'Trading will reopen at {MarketHours().open}.', 'error')
+        if user.role != 'admin' and not market_hours_info().is_open:
+            flash(
+                f'Trading will reopen at {market_hours_info().next_open.strftime('%A, %b %d at %I:%M %p EST')}.', 'error')
             return redirect(url_for('dashboard'))
 
         action = request.form['action']

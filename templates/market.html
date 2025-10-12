@@ -8,10 +8,10 @@
     <div>
         {% if market_hours.is_open %}
         <span class="badge bg-success me-2">Market Open</span>
-        <small class="text-muted">Open until <u>{{ market_hours.closes_at }}</u></small>
+        <small class="text-muted">Closes: <u>{{ market_hours.next_close }}</u></small>
         {% else %}
         <span class="badge bg-danger me-2">Market Closed</span>
-        <small class="text-muted">Closed until <u>{{ market_hours.opens_at }}</u></small>
+        <small class="text-muted">Opens: <u>{{ market_hours.next_open }}</u></small>
         {% endif %}
     </div>
 </div>

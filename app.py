@@ -11,6 +11,10 @@ import pytz
 from flask import abort
 import pandas_market_calendars as mcal
 from dotenv import load_dotenv
+import random
+import threading
+import time
+import atexit
 
 load_dotenv()
 
@@ -24,6 +28,10 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+# Global variable to track if price updater has started
+price_updater_started = False
+price_updater_thread = None
 
 
 class User(UserMixin, db.Model):
@@ -64,12 +72,17 @@ class Stock(db.Model):
 
     def update_price(self, new_price):
         if new_price > 0:
-            self.current_price = Decimal(str(new_price))
-            if new_price > self.day_high:
-                self.day_high = Decimal(str(new_price))
-            if new_price < self.day_low:
-                self.day_low = Decimal(str(new_price))
-            db.session.commit()
+            new_price_decimal = Decimal(str(new_price))
+            self.current_price = new_price_decimal
+            
+            # Update day high if new price is higher
+            if new_price_decimal > self.day_high:
+                self.day_high = new_price_decimal
+            
+            # Update day low if new price is lower
+            if new_price_decimal < self.day_low:
+                self.day_low = new_price_decimal
+            
             return True
         return False
 
@@ -154,6 +167,57 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+def update_stock_prices():
+    """Background task to update stock prices every minute"""
+    with app.app_context():
+        while True:
+            try:
+                stocks = Stock.query.all()
+                for stock in stocks:
+                    # Generate random change between -10% and +10%
+                    change_percent = random.uniform(-0.10, 0.10)
+                    new_price = float(stock.current_price) * (1 + change_percent)
+                    
+                    # Ensure price doesn't go below $0.01
+                    new_price = max(new_price, 0.01)
+                    
+                    # Update the stock price
+                    stock.update_price(new_price)
+                    
+                    # Also update volume with some random activity
+                    volume_change = random.randint(100, 10000)
+                    stock.volume += volume_change
+                
+                db.session.commit()
+                print(f"Stock prices updated at {datetime.utcnow()}")
+                
+            except Exception as e:
+                print(f"Error updating stock prices: {e}")
+                db.session.rollback()
+            
+            # Wait for 60 seconds before next update
+            time.sleep(60)
+
+
+def start_price_updater():
+    """Start the background price updater thread"""
+    global price_updater_thread, price_updater_started
+    
+    if not price_updater_started:
+        price_updater_thread = threading.Thread(target=update_stock_prices, daemon=True)
+        price_updater_thread.start()
+        price_updater_started = True
+        print("Stock price updater started")
+
+
+def stop_price_updater():
+    """Stop the background price updater thread"""
+    global price_updater_thread
+    if price_updater_thread and price_updater_thread.is_alive():
+        # Since it's a daemon thread, it will terminate when main thread exits
+        print("Stopping price updater...")
+
+
 def market_hours_info():
     # Get market settings
     settings = MarketSettings.query.first()
@@ -195,6 +259,14 @@ def market_hours_info():
             "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST') if next_close else None,
             "manual_override": False
         }
+
+
+# Start price updater when the first request comes in
+@app.before_request
+def before_first_request():
+    global price_updater_started
+    if not price_updater_started:
+        start_price_updater()
 
 
 @app.route('/')
@@ -289,7 +361,6 @@ def market():
 @app.route('/trade/<ticker>', methods=['GET', 'POST'])
 @login_required
 def trade(ticker):
-
     stock = Stock.query.filter_by(ticker=ticker).first()
     if not stock:
         flash('Stock not found', 'error')
@@ -316,8 +387,12 @@ def trade(ticker):
             flash('Enter a valid number of shares', 'error')
             return redirect(url_for('trade', ticker=ticker))
 
+        # Refresh stock data to get current price at time of transaction
+        db.session.refresh(stock)
+        current_price = stock.current_price
+
         if action == 'buy':
-            total_cost = shares * stock.current_price
+            total_cost = shares * current_price
             if user.cash_balance < total_cost:
                 flash('Insufficient funds', 'error')
             else:
@@ -326,7 +401,7 @@ def trade(ticker):
                     stock_id=stock.stock_id,
                     type='buy',
                     quantity=shares,
-                    price=stock.current_price
+                    price=current_price  # Use current price at transaction time
                 )
 
                 user.cash_balance -= total_cost
@@ -345,21 +420,21 @@ def trade(ticker):
                 db.session.commit()
 
                 flash(
-                    f'Successfully bought {shares} shares of {stock.ticker}', 'success')
+                    f'Successfully bought {shares} shares of {stock.ticker} at ${current_price:.2f}', 'success')
                 return redirect(url_for('dashboard'))
 
         elif action == 'sell':
             if not portfolio_item or portfolio_item.shares_owned < shares:
                 flash('Not enough shares to sell', 'error')
             else:
-                total_value = shares * stock.current_price
+                total_value = shares * current_price
 
                 new_transaction = Transaction(
                     user_id=user.id,
                     stock_id=stock.stock_id,
                     type='sell',
                     quantity=shares,
-                    price=stock.current_price
+                    price=current_price  # Use current price at transaction time
                 )
 
                 user.cash_balance += total_value
@@ -372,7 +447,7 @@ def trade(ticker):
                 db.session.commit()
 
                 flash(
-                    f'Successfully sold {shares} shares of {stock.ticker}', 'success')
+                    f'Successfully sold {shares} shares of {stock.ticker} at ${current_price:.2f}', 'success')
                 return redirect(url_for('dashboard'))
 
     return render_template('trade.html', stock=stock, user=user, user_shares=user_shares, market_open=market_info['is_open'])
@@ -591,5 +666,10 @@ def not_found_error(error):
     return render_template("404.html"), 404
 
 
+# Register cleanup function
+atexit.register(stop_price_updater)
+
 if __name__ == '__main__':
+    # Start price updater when running directly
+    start_price_updater()
     app.run(debug=True)

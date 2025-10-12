@@ -10,7 +10,7 @@
                 <h4 class="card-title mb-0">Trade {{ stock.ticker }}</h4>
             </div>
             <div class="card-body">
-                <p><strong>Company:</strong> {{ stock.name }}</p>
+                <p><strong>Company:</strong> {{ stock.company_name }}</p>  <!-- Changed from stock.name to stock.company_name -->
                 <p><strong>Current Price:</strong> ${{ "%.2f"|format(stock.current_price) }}</p>
                 <p><strong>Your Cash Balance:</strong> ${{ "%.2f"|format(user.cash_balance) }}</p>
                 <p><strong>Your Shares:</strong> {{ user_shares }}</p>

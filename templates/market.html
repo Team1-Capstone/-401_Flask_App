@@ -13,6 +13,7 @@
         <span class="badge bg-danger me-2">Market Closed</span>
         <small class="text-muted">Opens: <u>{{ market_hours.next_open }}</u></small>
         {% endif %}
+        <small class="text-muted ms-2">Prices update every minute</small>
     </div>
 </div>
 
@@ -26,8 +27,8 @@
                         <th>Company</th>
                         <th>Price</th>
                         <th>Change</th>
+                        <th>% Change</th>
                         <th>Volume</th>
-                        <th>Market Cap</th>
                         <th>Open</th>
                         <th>High</th>
                         <th>Low</th>
@@ -41,13 +42,32 @@
                     <tr>
                         <td class="fw-bold">{{ stock.ticker }}</td>
                         <td>{{ stock.company_name }}</td>
-                        <td>${{ stock.current_price }}</td>
-                        <td><!-- Add logic for price change if needed --></td>
+                        <td>${{ "%.2f"|format(stock.current_price) }}</td>
+                        <td>
+                            {% set change = stock.current_price - stock.opening_price %}
+                            {% if change > 0 %}
+                                <span class="text-success">+${{ "%.2f"|format(change) }}</span>
+                            {% elif change < 0 %}
+                                <span class="text-danger">-${{ "%.2f"|format(-change) }}</span>
+                            {% else %}
+                                <span class="text-muted">$0.00</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set change = stock.current_price - stock.opening_price %}
+                            {% set percent_change = (change / stock.opening_price) * 100 if stock.opening_price > 0 else 0 %}
+                            {% if percent_change > 0 %}
+                                <span class="text-success">+{{ "%.2f"|format(percent_change) }}%</span>
+                            {% elif percent_change < 0 %}
+                                <span class="text-danger">{{ "%.2f"|format(percent_change) }}%</span>
+                            {% else %}
+                                <span class="text-muted">0.00%</span>
+                            {% endif %}
+                        </td>
                         <td>{{ stock.volume }}</td>
-                        <td><!-- Add market cap if available --></td>
-                        <td>${{ stock.opening_price }}</td>
-                        <td>${{ stock.day_high }}</td>
-                        <td>${{ stock.day_low }}</td>
+                        <td>${{ "%.2f"|format(stock.opening_price) }}</td>
+                        <td>${{ "%.2f"|format(stock.day_high) }}</td>
+                        <td>${{ "%.2f"|format(stock.day_low) }}</td>
                         <td>
                             {% if current_user.is_authenticated %}
                             <a href="{{ url_for('trade', ticker=stock.ticker) }}" class="btn btn-sm btn-primary" {% if

@@ -268,9 +268,11 @@ def trade(ticker):
     user_shares = portfolio_item.shares_owned if portfolio_item else 0
 
     if request.method == 'POST':
-        if user.role != 'admin' and not market_hours_info().is_open:
+        if user.role != 'admin' and not market_hours_info()['is_open']:
+            open_time_string = datetime.strptime(
+                market_hours_info()['next_open'], '%A, %b %d at %I:%M %p EST')
             flash(
-                f'Trading will reopen at {market_hours_info().next_open.strftime('%A, %b %d at %I:%M %p EST')}.', 'error')
+                f'Trading will reopen at {open_time_string}.', 'error')
             return redirect(url_for('dashboard'))
 
         action = request.form['action']

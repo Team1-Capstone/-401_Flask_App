@@ -185,16 +185,36 @@ def market_hours_info():
             "manual_override": True
         }
     
+    # Check for active scheduled market times (automatic mode)
+    now = datetime.utcnow()
+    active_schedule = MarketSchedule.query.filter(
+        MarketSchedule.status == 'active',
+        MarketSchedule.start_time <= now,
+        MarketSchedule.end_time >= now
+    ).first()
+    
+    if active_schedule:
+        # Market is controlled by a schedule
+        is_open = (active_schedule.market_state == 'open')
+        return {
+            "is_open": is_open,
+            "next_close": active_schedule.end_time.strftime('%A, %b %d at %I:%M %p UTC') if is_open else None,
+            "next_open": active_schedule.end_time.strftime('%A, %b %d at %I:%M %p UTC') if not is_open else None,
+            "manual_override": False,
+            "scheduled": True,
+            "schedule_end": active_schedule.end_time
+        }
+    
     # Otherwise, use NYSE calendar
     nyse = mcal.get_calendar('NYSE')
-    now = datetime.now(pytz.timezone('America/New_York'))
+    now_et = datetime.now(pytz.timezone('America/New_York'))
 
-    schedule = nyse.schedule(tz='America/New_York', start_date=now.date() - timedelta(days=7),
-                             end_date=now.date() + timedelta(days=7))
+    schedule = nyse.schedule(tz='America/New_York', start_date=now_et.date() - timedelta(days=7),
+                             end_date=now_et.date() + timedelta(days=7))
 
-    today_schedule = schedule[(schedule['market_open'] <= now) & (
-        schedule['market_close'] >= now)]
-    upcoming = schedule[schedule['market_open'] > now]
+    today_schedule = schedule[(schedule['market_open'] <= now_et) & (
+        schedule['market_close'] >= now_et)]
+    upcoming = schedule[schedule['market_open'] > now_et]
 
     if not today_schedule.empty:
         next_close = today_schedule.iloc[0]['market_close']
@@ -202,7 +222,8 @@ def market_hours_info():
             "is_open": True,
             "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST'),
             "next_open": None,
-            "manual_override": False
+            "manual_override": False,
+            "scheduled": False
         }
     else:
         next_open = upcoming.iloc[0]['market_open'] if not upcoming.empty else None
@@ -211,7 +232,8 @@ def market_hours_info():
             "is_open": False,
             "next_open": next_open.strftime('%A, %b %d at %I:%M %p EST') if next_open else None,
             "next_close": next_close.strftime('%A, %b %d at %I:%M %p EST') if next_close else None,
-            "manual_override": False
+            "manual_override": False,
+            "scheduled": False
         }
 
 
@@ -267,40 +289,25 @@ def update_stock_prices():
 
 
 def check_scheduled_actions():
-    """Check for scheduled market actions and execute them"""
+    """Check for completed scheduled market actions and mark them"""
     try:
         now = datetime.utcnow()
         
-        # Get all pending scheduled actions that should be executed
-        scheduled_actions = MarketSchedule.query.filter(
-            MarketSchedule.status == 'pending',
-            MarketSchedule.start_time <= now
+        # Mark schedules as completed if their end time has passed
+        completed_schedules = MarketSchedule.query.filter(
+            MarketSchedule.status == 'active',
+            MarketSchedule.end_time < now
         ).all()
         
-        settings = MarketSettings.query.first()
+        for schedule in completed_schedules:
+            schedule.status = 'completed'
+            print(f"[{datetime.now()}] Scheduled period ended: {schedule.market_state} from {schedule.start_time} to {schedule.end_time}")
         
-        for action in scheduled_actions:
-            # Execute the scheduled action
-            if action.action == 'open':
-                settings.manual_override = True
-                settings.is_open = True
-                settings.updated_by = action.created_by
-                print(f"[{datetime.now()}] Scheduled market OPEN executed")
-            elif action.action == 'close':
-                settings.manual_override = True
-                settings.is_open = False
-                settings.updated_by = action.created_by
-                print(f"[{datetime.now()}] Scheduled market CLOSE executed")
-            
-            # Mark action as executed
-            action.status = 'executed'
-            action.executed_at = now
-        
-        if scheduled_actions:
+        if completed_schedules:
             db.session.commit()
             
     except Exception as e:
-        print(f"Error executing scheduled actions: {str(e)}")
+        print(f"Error checking scheduled actions: {str(e)}")
         db.session.rollback()
 
 
@@ -612,13 +619,15 @@ def admin_dashboard():
                 market_state = request.form['market_state']
                 notes = request.form.get('notes', '')
                 
-                # Combine date and time
+                # Combine date and time for start
                 start_datetime_str = f"{start_date_str} {start_time_str}"
-                end_datetime_str = f"{end_date_str} {end_time_str}"
                 start_datetime = datetime.strptime(start_datetime_str, '%Y-%m-%d %H:%M')
+                
+                # Combine date and time for end
+                end_datetime_str = f"{end_date_str} {end_time_str}"
                 end_datetime = datetime.strptime(end_datetime_str, '%Y-%m-%d %H:%M')
                 
-                # Check if the scheduled time is in the future
+                # Validation
                 if start_datetime <= datetime.utcnow():
                     flash('Start time must be in the future', 'error')
                 elif end_datetime <= start_datetime:
@@ -628,12 +637,12 @@ def admin_dashboard():
                         start_time=start_datetime,
                         end_time=end_datetime,
                         market_state=market_state,
-                        notes=notes,
-                        created_by=current_user.id
+                        created_by=current_user.id,
+                        notes=notes if notes else None
                     )
                     db.session.add(new_schedule)
                     db.session.commit()
-                    flash(f'Market period scheduled from {start_datetime.strftime("%Y-%m-%d %H:%M")} to {end_datetime.strftime("%Y-%m-%d %H:%M")}', 'success')
+                    flash(f'Market scheduled to be {market_state} from {start_datetime.strftime("%Y-%m-%d %H:%M")} to {end_datetime.strftime("%Y-%m-%d %H:%M")} UTC', 'success')
             except ValueError as e:
                 flash('Invalid date/time format', 'error')
             except Exception as e:
@@ -642,12 +651,12 @@ def admin_dashboard():
         elif 'cancel_schedule_id' in request.form:
             schedule_id = int(request.form['cancel_schedule_id'])
             schedule = MarketSchedule.query.get(schedule_id)
-            if schedule and schedule.status == 'pending':
+            if schedule and schedule.status == 'active':
                 schedule.status = 'cancelled'
                 db.session.commit()
-                flash('Scheduled action cancelled', 'success')
+                flash('Scheduled period cancelled', 'success')
             else:
-                flash('Schedule not found or already executed', 'error')
+                flash('Schedule not found or already completed', 'error')
 
         return redirect(url_for('admin_dashboard'))
     
@@ -655,7 +664,7 @@ def admin_dashboard():
     market_info = market_hours_info()
     settings = MarketSettings.query.first()
     
-    # Get all scheduled actions
+    # Get all scheduled periods (active and recent completed ones)
     scheduled_periods = MarketSchedule.query.filter(
         MarketSchedule.status.in_(['active', 'completed', 'cancelled'])
     ).order_by(MarketSchedule.start_time.desc()).limit(20).all()

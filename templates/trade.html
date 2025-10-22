@@ -27,8 +27,8 @@
                         <input type="number" class="form-control" id="shares" name="shares" min="1" required>
                     </div>
                     <div class="d-grid gap-2">
-                        <button type="submit" name="action" value="buy" class="btn btn-success">Buy</button>
-                        <button type="submit" name="action" value="sell" class="btn btn-danger">Sell</button>
+                        <button type="submit" name="action" value="buy" class="btn btn-success trade-btn">Buy</button>
+                        <button type="submit" name="action" value="sell" class="btn btn-danger trade-btn">Sell</button>
                     </div>
                 </form>
                 <div class="text-center mt-3">
@@ -38,4 +38,20 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const buttons = document.querySelectorAll(".trade-btn");
+
+    buttons.forEach(button => {
+        button.addEventListener("click", function(event) {
+            const action = this.value;
+            const shares = document.getElementById("shares").value;
+            const confirmed = confirm(`Are you sure you want to ${action} ${shares} share(s) of {{ stock.ticker }}?`);
+            if (!confirmed) {
+                event.preventDefault(); // cancel form submission
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

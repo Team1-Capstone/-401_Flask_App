@@ -1,6 +1,8 @@
 bcrypt==5.0.0
 blinker==1.9.0
+cffi==2.0.0
 click==8.3.0
+cryptography==46.0.3
 exchange_calendars==4.11.1
 Flask==3.1.2
 Flask-Bcrypt==1.0.1
@@ -13,6 +15,7 @@ MarkupSafe==3.0.3
 numpy==2.3.3
 pandas==2.3.3
 pandas_market_calendars==5.1.1
+pycparser==2.23
 pyluach==2.3.0
 PyMySQL==1.1.2
 python-dateutil==2.9.0.post0
